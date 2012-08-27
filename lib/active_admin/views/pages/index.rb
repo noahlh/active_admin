@@ -1,3 +1,5 @@
+require 'active_admin/helpers/collection'
+
 module ActiveAdmin
   module Views
     module Pages
@@ -5,7 +7,11 @@ module ActiveAdmin
       class Index < Base
 
         def title
-          active_admin_config.plural_resource_label
+          if config[:title].is_a? String
+            config[:title]
+          else
+            active_admin_config.plural_resource_label
+          end
         end
 
         def config
@@ -31,15 +37,10 @@ module ActiveAdmin
           end
         end
 
+        include ::ActiveAdmin::Helpers::Collection
+
         def items_in_collection?
-          # Remove the order clause before limiting to 1. This ensures that
-          # any referenced columns in the order will not try to be accessed.
-          #
-          # When we call #exists?, the query's select statement is changed to "1".
-          #
-          # If we don't reorder, there may be some columns referenced in the order
-          # clause that requires the original select.
-          collection.reorder("").limit(1).exists?
+          !collection_is_empty?
         end
 
         def build_collection

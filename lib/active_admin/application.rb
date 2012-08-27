@@ -57,6 +57,15 @@ module ActiveAdmin
     # The method to use when generating the link for user logout
     inheritable_setting :logout_link_method, :get
 
+    # Whether the batch actions are enabled or not
+    inheritable_setting :batch_actions, false
+
+    # Whether filters are enabled
+    inheritable_setting :filters, true
+
+    # The namespace root.
+    inheritable_setting :root_to, 'dashboard#index'
+
     # Active Admin makes educated guesses when displaying objects, this is
     # the list of methods it tries calling in order
     setting :display_name_methods, [ :display_name,
@@ -107,11 +116,17 @@ module ActiveAdmin
     # @returns [Namespace] the new or existing namespace
     def find_or_create_namespace(name)
       name ||= :root
-      return namespaces[name] if namespaces[name]
-      namespace = Namespace.new(self, name)
-      namespaces[name] = namespace
-      ActiveAdmin::Event.dispatch ActiveAdmin::Namespace::RegisterEvent, namespace
+
+      if namespaces[name]
+        namespace = namespaces[name]
+      else
+        namespace = Namespace.new(self, name)
+        namespaces[name] = namespace
+        ActiveAdmin::Event.dispatch ActiveAdmin::Namespace::RegisterEvent, namespace
+      end
+
       yield(namespace) if block_given?
+
       namespace
     end
 
@@ -227,7 +242,7 @@ module ActiveAdmin
       register_stylesheet 'active_admin.css', :media => 'screen'
       register_stylesheet 'active_admin/print.css', :media => 'print'
 
-      if !ActiveAdmin.use_asset_pipeline?
+      unless ActiveAdmin.use_asset_pipeline?
         register_javascript 'jquery.min.js'
         register_javascript 'jquery-ui.min.js'
         register_javascript 'jquery_ujs.js'

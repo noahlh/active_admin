@@ -27,10 +27,22 @@ module ActiveAdminContentsRollback
   def self.rollback!
     recorded_files.each do |filename, contents|
       # contents will be nil if the file didin't exist
-      if contents
-        File.open(filename, "w+") {|f| f << contents }
+      if contents.present?
+        File.open(filename, "w") {|f| f << contents }
       else
         File.delete(filename)
+
+        # Delete parent directories
+        begin
+          dir = File.dirname(filename)
+          until dir == Rails.root
+            Dir.rmdir(dir)
+            dir = dir.split('/')[0..-2].join('/')
+          end
+        rescue Errno::ENOTEMPTY
+          # Directory not empty
+        end
+
       end
     end
 
@@ -57,11 +69,21 @@ Given /^an index configuration of:$/ do |configuration_content|
 end
 
 Given /^a show configuration of:$/ do |configuration_content|
+  resource = configuration_content.match(/ActiveAdmin\.register (\w+)/)[1]
   load_active_admin_configuration(configuration_content)
 
-  step 'I am logged in'
-  step "I am on the index page for posts"
-  step 'I follow "View"'
+  case resource
+  when "Post"
+    step 'I am logged in'
+    step "I am on the index page for posts"
+    step 'I follow "View"'
+  when "Tag"
+    step 'I am logged in'
+    Tag.create!
+    visit admin_tag_path(Tag.last)
+  else
+    raise "#{resource} is not supported"
+  end
 end
 
 Given /^"([^"]*)" contains:$/ do |filename, contents|
